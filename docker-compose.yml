@@ -1,0 +1,130 @@
+services:
+
+  postgres:
+    image: postgres:16
+    container_name: webhook-postgres
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: webhook_processor
+
+    ports:
+      - "5433:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    restart: unless-stopped
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U postgres -d webhook_processor"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+
+  api:
+    build:
+      context: ./backend
+
+    container_name: webhook-api
+
+    environment:
+      PORT: 3000
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      DATABASE_NAME: webhook_processor
+
+      MAX_ATTEMPTS: 5
+      LEASE_TIMEOUT_SECONDS: 30
+      BASE_RETRY_DELAY_SECONDS: 5
+
+    ports:
+      - "3000:3000"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+    command: npm run start:prod
+
+
+  worker-1:
+    build:
+      context: ./backend
+
+    container_name: webhook-worker-1
+
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      DATABASE_NAME: webhook_processor
+
+      MAX_ATTEMPTS: 5
+      LEASE_TIMEOUT_SECONDS: 30
+      BASE_RETRY_DELAY_SECONDS: 5
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+    command: npm run start:worker
+
+
+  worker-2:
+    build:
+      context: ./backend
+
+    container_name: webhook-worker-2
+
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      DATABASE_NAME: webhook_processor
+
+      MAX_ATTEMPTS: 5
+      LEASE_TIMEOUT_SECONDS: 30
+      BASE_RETRY_DELAY_SECONDS: 5
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+    command: npm run start:worker
+
+
+  frontend:
+    build:
+      context: ./frontend
+
+    container_name: webhook-frontend
+
+    ports:
+      - "3001:3000"
+
+    depends_on:
+      api:
+        condition: service_started
+
+    restart: unless-stopped
+
+
+volumes:
+  postgres_data:
