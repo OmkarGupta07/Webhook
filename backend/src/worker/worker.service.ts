@@ -83,7 +83,7 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
 
                 const attempt=manager.create(ProcessingAttempt,{eventId:event.eventId,attemptNumber,workerId:this.workerId,startedAt:new Date(),finishedAt:null,result:AttemptResult.FAILED,error:null})
                 
-                manager.save(attempt);
+                await manager.save(attempt);
                 return event ;
            
             }
